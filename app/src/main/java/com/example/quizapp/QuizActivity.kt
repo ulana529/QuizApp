@@ -1,5 +1,6 @@
 package com.example.quizapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
@@ -13,8 +14,16 @@ import java.io.InputStreamReader
 
 class QuizActivity : AppCompatActivity() {
 
+    // Переменные для элементов экрана
+    private lateinit var tvQuestionCount: TextView
+    private lateinit var tvQuestionText: TextView
+    private lateinit var tvScore: TextView
+    private lateinit var btnOptions: List<Button>
+
+    // Переменные для логики
     private val questionList = mutableListOf<Question>()
     private var currentQuestionIndex = 0
+    private var score = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,27 +36,30 @@ class QuizActivity : AppCompatActivity() {
             insets
         }
 
-
-        loadQuestionsFromAssets()
-
-        if (questionList.isNotEmpty()) {
-            showQuestion(0)
-        }
-
-        val buttons = listOf(
-            findViewById<Button>(R.id.answer1),
-            findViewById<Button>(R.id.answer2),
-            findViewById<Button>(R.id.answer3),
-            findViewById<Button>(R.id.answer4)
+        // 1. Находим визуальные элементы
+        tvQuestionCount = findViewById(R.id.questionCounter)
+        tvQuestionText = findViewById(R.id.questionText)
+        tvScore = findViewById(R.id.tvScore)
+        btnOptions = listOf(
+            findViewById(R.id.answer1),
+            findViewById(R.id.answer2),
+            findViewById(R.id.answer3),
+            findViewById(R.id.answer4)
         )
 
-        buttons.forEachIndexed { index, button ->
+        // 2. Загружаем вопросы
+        loadQuestionsFromAssets()
+
+        // 3. Вешаем листенеры на кнопки ответов
+        btnOptions.forEachIndexed { index, button ->
             button.setOnClickListener {
                 checkAnswer(index)
             }
         }
-    }
 
+        // 4. Показываем первый вопрос
+        showNextQuestion()
+    }
 
     private fun loadQuestionsFromAssets() {
         try {
@@ -70,42 +82,38 @@ class QuizActivity : AppCompatActivity() {
         }
     }
 
+    private fun showNextQuestion() {
+        if (currentQuestionIndex < questionList.size) {
+            val currentQuestion = questionList[currentQuestionIndex]
 
-    private fun showQuestion(index: Int) {
-        val question = questionList[index]
+            tvQuestionCount.text = "Вопрос ${currentQuestionIndex + 1} из ${questionList.size}"
+            tvQuestionText.text = currentQuestion.questionText
+            tvScore.text = "Счет: $score"
 
-        val counter = findViewById<TextView>(R.id.questionCounter)
-        val questionText = findViewById<TextView>(R.id.questionText)
-        val answer1 = findViewById<Button>(R.id.answer1)
-        val answer2 = findViewById<Button>(R.id.answer2)
-        val answer3 = findViewById<Button>(R.id.answer3)
-        val answer4 = findViewById<Button>(R.id.answer4)
-
-        counter.text = "Вопрос ${index + 1} из ${questionList.size}"
-        questionText.text = question.questionText
-
-        answer1.text = question.options[0]
-        answer2.text = question.options[1]
-        answer3.text = question.options[2]
-        answer4.text = question.options[3]
+            for (i in btnOptions.indices) {
+                btnOptions[i].text = currentQuestion.options[i]
+            }
+        } else {
+            // Переход на экран результатов
+            val intent = Intent(this, ResultActivity::class.java)
+            intent.putExtra("SCORE", score)
+            intent.putExtra("TOTAL", questionList.size)
+            startActivity(intent)
+            finish()
+        }
     }
-
 
     private fun checkAnswer(selectedIndex: Int) {
         val currentQuestion = questionList[currentQuestionIndex]
 
         if (selectedIndex == currentQuestion.correctIndex) {
             Toast.makeText(this, "Правильно!", Toast.LENGTH_SHORT).show()
+            score++
         } else {
             Toast.makeText(this, "Неправильно!", Toast.LENGTH_SHORT).show()
         }
 
         currentQuestionIndex++
-        if (currentQuestionIndex < questionList.size) {
-            showQuestion(currentQuestionIndex)
-        } else {
-            Toast.makeText(this, "Викторина завершена!", Toast.LENGTH_LONG).show()
-            finish()
-        }
+        showNextQuestion()
     }
 }
